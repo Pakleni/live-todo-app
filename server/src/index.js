@@ -4,6 +4,7 @@ import cors from "cors";
 import { createServer } from "node:http";
 import todoRouter from "./routers/todo.routes.js";
 import socket from "./socket.js";
+import redis from "./redis.js";
 
 const PORT = process.env.PORT || 3000;
 const CORS_OPTIONS = {
@@ -20,7 +21,7 @@ app.use(express.json());
 const server = createServer(app);
 
 // create socket.io instance
-const io = socket.setup(server, {
+const [io, pubClient, subClient] = socket.setup(server, {
   cors: CORS_OPTIONS,
 });
 
@@ -33,3 +34,27 @@ app.use("/", router);
 server.listen(PORT, () => {
   console.log(`Listening at http://localhost:${PORT}`);
 });
+
+// cleanup code
+let isExiting = false;
+const cleanup = () => {
+  if (isExiting) {
+    return;
+  }
+  isExiting = true;
+  console.log("Closing socket.io and server...");
+  io.close(() => {
+    console.log("Closing redis...");
+    redis.quit(() => {
+      pubClient.quit(() => {
+        subClient.quit(() => {
+          console.log("Bye!");
+          process.exit(0);
+        });
+      });
+    });
+  });
+};
+
+process.on("SIGTERM", cleanup);
+process.on("SIGINT", cleanup);

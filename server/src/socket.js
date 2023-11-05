@@ -20,7 +20,7 @@ const setup = (server, config) => {
     });
   });
 
-  return io;
+  return [io, pubClient, subClient];
 };
 
 export default {
