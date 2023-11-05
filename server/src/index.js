@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import todoRouter from "./routers/todo.routes.js";
 import socket from "./socket.js";
 import redis from "./redis.js";
+import { promisify } from "node:util";
 
 const PORT = process.env.PORT || 3000;
 const CORS_OPTIONS = {
@@ -36,24 +37,30 @@ server.listen(PORT, () => {
 });
 
 // cleanup code
-let isExiting = false;
-const cleanup = () => {
-  if (isExiting) {
+let isCleaning = false;
+const cleanup = async () => {
+  if (isCleaning) {
     return;
   }
-  isExiting = true;
-  console.log("Closing socket.io and server...");
-  io.close(() => {
+  isCleaning = true;
+
+  // exit after 5 seconds if cleanup fails
+  // or takes too long
+  setTimeout(() => {
+    process.exit(1);
+  }, 5000);
+
+  try {
+    console.log("Closing socket.io and server ...");
+    await promisify(io.close.bind(io))();
     console.log("Closing redis...");
-    redis.quit(() => {
-      pubClient.quit(() => {
-        subClient.quit(() => {
-          console.log("Bye!");
-          process.exit(0);
-        });
-      });
-    });
-  });
+    await Promise.all([redis.quit(), pubClient.quit(), subClient.quit()]);
+  } catch (err) {
+    console.error(err);
+    return process.exit(1);
+  }
+  console.log("Bye!");
+  process.exit(0);
 };
 
 process.on("SIGTERM", cleanup);

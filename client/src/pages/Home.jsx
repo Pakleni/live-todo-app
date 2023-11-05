@@ -44,6 +44,7 @@ const Home = () => {
       // Clear error message
       setError("");
       // Fetch todos from server
+      // We need to refetch on reconnect in case we missed any events
       fetchToDos();
     });
     socket.on("connect_error", (err) => {
