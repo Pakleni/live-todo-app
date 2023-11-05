@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import Home from "./pages/Home.jsx";
 
 const App = () => {
   const [socket, setSocket] = useState(null);
@@ -12,7 +13,7 @@ const App = () => {
     return () => newSocket.close();
   }, []);
 
-  return <h1>hello world</h1>;
+  return <Home socket={socket} />;
 };
 
 export default App;
