@@ -1,4 +1,4 @@
-# Constellation Live ToDo
+# Live ToDo
 
 * Redis storage
 * Support for multiple backend instances behind load balancer
