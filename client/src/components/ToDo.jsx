@@ -1,18 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 // Single ToDo component
-const ToDo = ({ title, state, onToggle, onDelete }) => {
-  const [stateText, setButtonText] = useState(state ? "✔" : " ");
-  const [textDecoration, setTextDecoration] = useState(
-    state ? "line-through" : "none",
-  );
-  const [color, setColor] = useState(state ? "gray" : "black");
+const ToDo = ({ todo, onToggle, onDelete }) => {
+  const { title, state } = todo;
 
-  useEffect(() => {
-    setButtonText(state ? "✔" : " ");
-    setTextDecoration(state ? "line-through" : "none");
-    setColor(state ? "gray" : "black");
-  }, [state]);
+  const [disabled, setDisabled] = useState(false);
+
+  const toggleToDo = async () => {
+    if (disabled) return;
+    setDisabled(true);
+    await onToggle(todo);
+    setDisabled(false);
+  };
+
+  const deleteToDo = async () => {
+    if (disabled) return;
+    setDisabled(true);
+    await onDelete(todo);
+    setDisabled(false);
+  };
 
   return (
     <div
@@ -25,19 +31,20 @@ const ToDo = ({ title, state, onToggle, onDelete }) => {
         borderRadius: "5px",
         margin: "5px",
         fontFamily: "monospace",
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <span
-        onClick={onToggle}
+        onClick={toggleToDo}
         style={{
-          textDecoration,
-          color,
+          textDecoration: state ? "line-through" : "none",
+          color: state ? "gray" : "black",
         }}
       >
-        [{stateText}] {title}
+        [{state ? "✔" : " "}] {title}
       </span>
       <span
-        onClick={onDelete}
+        onClick={deleteToDo}
         style={{
           color: "red",
         }}

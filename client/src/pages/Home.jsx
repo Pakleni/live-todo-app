@@ -1,57 +1,63 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ToDo from "../components/ToDo.jsx";
+import ToDoForm from "../components/ToDoForm.jsx";
+
+import api from "../api";
 
 const Home = ({ socket }) => {
-  const todos = [
-    {
-      id: 1,
-      title: "To Do 1",
-      state: true,
-    },
-    {
-      id: 2,
-      title: "To Do 2",
-      state: false,
-    },
-    {
-      id: 3,
-      title: "To Do 3",
-      state: true,
-    },
-  ];
+  const [todos, setTodos] = useState([]);
+  const [error, setError] = useState(null);
+
+  const fetchToDos = async () => {
+    try {
+      const todos = await api.getToDos();
+      setTodos(todos);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Fetch ToDos on first render
+  useEffect(() => {
+    fetchToDos();
+  }, []);
+
+  const createToDo = async (todo) => {
+    try {
+      await api.createToDo(todo);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleToDo = async (todo) => {
+    try {
+      await api.toggleToDo(todo);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const deleteToDo = async (todo) => {
+    try {
+      await api.deleteToDo(todo);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on("todos", (todos) => {
+      setTodos(JSON.parse(todos).map((todo) => JSON.parse(todo)));
+    });
+  }, [socket]);
 
   return (
     <>
       <h1>ToDo List</h1>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const title = e.target.elements[0].value;
-          socket.emit("addToDo", title);
-          e.target.reset();
-        }}
-      >
-        <input
-          type="text"
-          style={{
-            width: "300px",
-            height: "30px",
-            fontSize: "20px",
-            fontFamily: "monospace",
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            width: "100px",
-            height: "30px",
-            fontSize: "20px",
-            fontFamily: "monospace",
-          }}
-        >
-          Add
-        </button>
-      </form>
+      <ToDoForm onCreate={createToDo} />
       <br />
       <div
         style={{
@@ -64,17 +70,13 @@ const Home = ({ socket }) => {
           .map((todo) => (
             <ToDo
               key={todo.id}
-              title={todo.title}
-              state={todo.state}
-              onClick={() => {
-                socket.emit("toggleToDo", todo.id);
-              }}
-              onDelete={() => {
-                socket.emit("deleteToDo", todo.id);
-              }}
+              todo={todo}
+              onToggle={toggleToDo}
+              onDelete={deleteToDo}
             />
           ))}
       </div>
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </>
   );
 };
