@@ -1,6 +1,6 @@
 # Constellation Live ToDo
 
-Redis todo storage
-Support for multiple backend instances behind load balancer
-Websocket that broadcasts changes
-Graceful handling of lost connection and reconnect
+* Redis storage
+* Support for multiple backend instances behind load balancer
+* Websocket that broadcasts changes through redis pub/sub
+* Graceful handling of lost connection and reconnect
