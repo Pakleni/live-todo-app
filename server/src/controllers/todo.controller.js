@@ -2,11 +2,6 @@ import { nanoid } from "nanoid";
 import redis from "../redis.js";
 import emitter from "../emitter.js";
 
-const emitAll = async () => {
-  const todos = await redis.hvals("todos");
-  emitter.emit("todos", JSON.stringify(todos));
-};
-
 const ToDo = {
   getAll: async (req, res) => {
     const todos = await redis.hvals("todos");
@@ -18,7 +13,8 @@ const ToDo = {
     todo.id = nanoid();
 
     await redis.hset("todos", todo.id, JSON.stringify(todo));
-    emitAll();
+    // emit create event
+    emitter.emit("todo.create", todo);
 
     res.send(todo);
   },
@@ -29,7 +25,8 @@ const ToDo = {
     todo.id = id;
 
     await redis.hset("todos", id, JSON.stringify(todo));
-    emitAll();
+    // emit update event
+    emitter.emit("todo.update", todo);
 
     res.send(todo);
   },
@@ -37,7 +34,8 @@ const ToDo = {
     const { id } = req.params;
 
     await redis.hdel("todos", id);
-    emitAll();
+    // emit delete event
+    emitter.emit("todo.delete", id);
 
     res.send({ id });
   },

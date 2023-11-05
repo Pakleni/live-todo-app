@@ -1,63 +1,83 @@
 import React, { useEffect, useState } from "react";
 import ToDo from "../components/ToDo.jsx";
-import ToDoForm from "../components/ToDoForm.jsx";
+import CreateForm from "../components/CreateForm.jsx";
+import { io } from "socket.io-client";
 
 import api from "../api";
 
-const Home = ({ socket }) => {
+// Sort todos by title and state
+// purely for display purposes
+const sortToDos = (todos) =>
+  todos
+    .sort((a, b) => (a.title > b.title ? 1 : -1))
+    .sort((a, b) => a.state - b.state);
+
+const Home = () => {
   const [todos, setTodos] = useState([]);
   const [error, setError] = useState(null);
 
-  const fetchToDos = async () => {
-    try {
-      const todos = await api.getToDos();
+  // Wrap api functions with error handling
+  const [fetchToDos, createToDo, toggleToDo, deleteToDo] = [
+    async (...args) => {
+      const todos = await api.getToDos(args);
       setTodos(todos);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  // Fetch ToDos on first render
-  useEffect(() => {
-    fetchToDos();
-  }, []);
-
-  const createToDo = async (todo) => {
+    },
+    api.createToDo,
+    api.toggleToDo,
+    api.deleteToDo,
+  ].map((fn) => async (...args) => {
     try {
-      await api.createToDo(todo);
+      await fn(...args);
     } catch (err) {
+      console.error(err);
       setError(err.message);
     }
-  };
-
-  const toggleToDo = async (todo) => {
-    try {
-      await api.toggleToDo(todo);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  const deleteToDo = async (todo) => {
-    try {
-      await api.deleteToDo(todo);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  });
 
   useEffect(() => {
-    if (!socket) return;
+    console.log("connecting socket...");
+    const socket = io(process.env.BACKEND_URL);
 
-    socket.on("todos", (todos) => {
-      setTodos(JSON.parse(todos).map((todo) => JSON.parse(todo)));
+    // Connection events
+    socket.on("connect", () => {
+      console.log("connected/reconnected");
+      // Clear error message
+      setError("");
+      // Fetch todos from server
+      fetchToDos();
     });
-  }, [socket]);
+    socket.on("connect_error", (err) => {
+      console.log("connect_error", err);
+      setError("Failed to connect to server, retrying...");
+    });
+    socket.on("disconnect", (reason) => {
+      console.log("disconnected");
+      // If server disconnects, reconnect
+      if (reason === "io server disconnect") {
+        socket.connect();
+      }
+      setError("Disconnected from server, reconnecting...");
+    });
+
+    // ToDo events
+    socket.on("todo.create", (todo) => {
+      setTodos((todos) => [...todos, todo]);
+    });
+    socket.on("todo.update", (todo) => {
+      setTodos((todos) => todos.map((t) => (t.id === todo.id ? todo : t)));
+    });
+    socket.on("todo.delete", (id) => {
+      setTodos((todos) => todos.filter((t) => t.id !== id));
+    });
+
+    return () => socket.close();
+  }, []);
 
   return (
     <>
       <h1>ToDo List</h1>
-      <ToDoForm onCreate={createToDo} />
+      <br />
+      <CreateForm onCreate={createToDo} />
       <br />
       <div
         style={{
@@ -65,16 +85,14 @@ const Home = ({ socket }) => {
           flexDirection: "column",
         }}
       >
-        {todos
-          .sort((a, b) => (a.state === b.state ? 0 : a.state ? 1 : -1))
-          .map((todo) => (
-            <ToDo
-              key={todo.id}
-              todo={todo}
-              onToggle={toggleToDo}
-              onDelete={deleteToDo}
-            />
-          ))}
+        {sortToDos(todos).map((todo) => (
+          <ToDo
+            key={todo.id}
+            todo={todo}
+            onToggle={toggleToDo}
+            onDelete={deleteToDo}
+          />
+        ))}
       </div>
       {error && <p style={{ color: "red" }}>{error}</p>}
     </>
