@@ -1,5 +1,5 @@
 {
-  "name": "constellation-live-todo-server",
+  "name": "live-todo-server",
   "version": "1.0.0",
   "description": "Constellation Live Todo Server",
   "main": "src/index.js",
